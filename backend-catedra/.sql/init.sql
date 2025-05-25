@@ -1,6 +1,6 @@
 -- ENUMS
 CREATE TYPE user_role AS ENUM ('admin', 'employee', 'cashier', 'client');
-CREATE TYPE account_status AS ENUM ('active', 'closed');
+CREATE TYPE product_status AS ENUM ('active', 'closed');
 CREATE TYPE card_network AS ENUM ('Visa', 'MasterCard');
 CREATE TYPE card_category AS ENUM ('Classic', 'Infinite', 'Gold', 'Platinum', 'Business');
 CREATE TYPE loan_category AS ENUM ('personal', 'agricultural', 'mortgage');
@@ -74,7 +74,7 @@ CREATE TABLE accounts (
     account_number VARCHAR(20) UNIQUE NOT NULL,
     opening_date DATE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     amount DECIMAL(12,2) NOT NULL,
-    account_status account_status NOT NULL,
+    account_status product_status NOT NULL DEFAULT 'active',
     closing_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
@@ -101,6 +101,7 @@ CREATE TABLE cards (
     network card_network NOT NULL,
     category card_category NOT NULL,
     interest_rate DECIMAL(5,2) NOT NULL,
+    card_status product_status NOT NULL DEFAULT 'active',
     membership_fee DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -119,6 +120,7 @@ CREATE TABLE loans (
     insurance_fee DECIMAL(10,2),
     beneficiaries TEXT,
     category loan_category NOT NULL,
+    loan_status product_status NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -136,6 +138,7 @@ CREATE TABLE insurances (
     daily_hospital_rent DECIMAL(10,2),
     coverage_conditions TEXT,
     assistance_type assistance_type,
+    insurance_status product_status NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

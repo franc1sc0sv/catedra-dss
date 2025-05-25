@@ -88,7 +88,8 @@ class UserSeeder
                 'salary' => 5000.00,
                 'profession' => 'Business Administration',
                 'emails' => 'juan.perez@company.com',
-                'phones' => '123-456-7890'
+                'phones' => '123-456-7890',
+                'role' => 'employee'
             ],
             [
                 'username' => 'maria.garcia',
@@ -108,14 +109,15 @@ class UserSeeder
                 'salary' => 4500.00,
                 'profession' => 'Accounting',
                 'emails' => 'maria.garcia@company.com',
-                'phones' => '098-765-4321'
+                'phones' => '098-765-4321',
+                'role' => 'cashier'
             ]
         ];
 
         foreach ($employees as $employee) {
             $this->pdo->beginTransaction();
             try {
-                $userId = $this->insertUser($employee['username'], $employee['password'], 'cashier');
+                $userId = $this->insertUser($employee['username'], $employee['password'], $employee['role']);
 
                 if ($userId === null) {
                     echo "Employee user {$employee['username']} already exists\n";
