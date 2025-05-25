@@ -4,12 +4,8 @@ namespace App;
 
 use React\Http\Message\Response;
 use Psr\Http\Message\ServerRequestInterface;
-use App\Controllers\HomeController;
-use App\Controllers\DataController;
 use App\Services\DatabaseService;
 use App\Controllers\AuthController;
-use App\Controllers\DocumentController;
-use App\Controllers\EventController;
 use App\Controllers\AdminController;
 use App\Controllers\EmployeeController;
 use App\Controllers\ClientController;
@@ -18,9 +14,7 @@ use App\Middlewares\RoleMiddleware;
 use App\Services\AuthService;
 use App\Services\AdminService;
 use App\Services\EmployeeService;
-use App\Services\DocumentService;
 use App\Services\ClientService;
-use App\Utils\Logger;
 use App\Controllers\AccountController;
 use App\Controllers\CardController;
 use App\Controllers\InsuranceController;
@@ -31,6 +25,8 @@ use App\Services\InsuranceService;
 use App\Services\LoanService;
 use App\Controllers\TransactionController;
 use App\Services\TransactionService;
+use App\Controllers\WalletController;
+use App\Services\WalletService;
 
 use function App\Middlewares\withParsedBody;
 
@@ -40,6 +36,9 @@ class Router
     private RoleMiddleware $adminRoleMiddleware;
     private RoleMiddleware $employeeRoleMiddleware;
     private RoleMiddleware $adminEmployeeRoleMiddleware;
+    private RoleMiddleware $clientRoleMiddleware;
+    private RoleMiddleware $cashierRoleEmployeeMiddleware;
+
     private DatabaseService $db;
 
     public function __construct()
@@ -53,6 +52,8 @@ class Router
         $this->adminRoleMiddleware = new RoleMiddleware(['admin']);
         $this->employeeRoleMiddleware = new RoleMiddleware(['employee']);
         $this->adminEmployeeRoleMiddleware = new RoleMiddleware(['admin', 'employee']);
+        $this->cashierRoleEmployeeMiddleware = new RoleMiddleware(['cashier', 'employee']);
+        $this->clientRoleMiddleware = new RoleMiddleware(['client']);
     }
 
     public function handle(ServerRequestInterface $request): Response
@@ -163,7 +164,7 @@ class Router
             $controller = new AccountController($accountService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
             );
         }
 
@@ -172,7 +173,7 @@ class Router
             $controller = new AccountController($accountService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
             );
         }
 
@@ -181,7 +182,7 @@ class Router
             $controller = new AccountController($accountService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
             );
         }
 
@@ -190,7 +191,7 @@ class Router
             $controller = new AccountController($accountService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
             );
         }
 
@@ -200,7 +201,7 @@ class Router
             $controller = new CardController($cardService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
             );
         }
 
@@ -209,7 +210,7 @@ class Router
             $controller = new CardController($cardService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
             );
         }
 
@@ -218,7 +219,7 @@ class Router
             $controller = new CardController($cardService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
             );
         }
 
@@ -227,7 +228,7 @@ class Router
             $controller = new CardController($cardService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
             );
         }
 
@@ -237,7 +238,7 @@ class Router
             $controller = new LoanController($loanService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
             );
         }
 
@@ -246,7 +247,7 @@ class Router
             $controller = new LoanController($loanService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
             );
         }
 
@@ -255,7 +256,7 @@ class Router
             $controller = new LoanController($loanService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
             );
         }
 
@@ -264,7 +265,7 @@ class Router
             $controller = new LoanController($loanService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
             );
         }
 
@@ -274,7 +275,7 @@ class Router
             $controller = new InsuranceController($insuranceService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
             );
         }
 
@@ -283,7 +284,7 @@ class Router
             $controller = new InsuranceController($insuranceService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
             );
         }
 
@@ -292,7 +293,7 @@ class Router
             $controller = new InsuranceController($insuranceService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
             );
         }
 
@@ -301,7 +302,7 @@ class Router
             $controller = new InsuranceController($insuranceService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+                fn($req) => $this->employeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
             );
         }
 
@@ -310,7 +311,7 @@ class Router
             $controller = new TransactionController(new TransactionService($this->db->getConnection()));
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+                fn($req) => $this->cashierRoleEmployeeMiddleware->handle($req, fn($r) => $controller->create($r))
             );
         }
 
@@ -319,7 +320,7 @@ class Router
             $args = ['clientId' => $matches[1]];
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getByClient($r, $args))
+                fn($req) => $this->cashierRoleEmployeeMiddleware->handle($req, fn($r) => $controller->getByClient($r, $args))
             );
         }
 
@@ -328,7 +329,16 @@ class Router
             $args = ['referenceType' => $matches[1], 'referenceId' => $matches[2]];
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getByProduct($r, $args))
+                fn($req) => $this->cashierRoleEmployeeMiddleware->handle($req, fn($r) => $controller->getByProduct($r, $args))
+            );
+        }
+
+        // Wallet routes
+        if ($path === '/api/wallet' && $method === 'GET') {
+            $controller = new WalletController(new WalletService($this->db->getConnection()));
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->clientRoleMiddleware->handle($req, fn($r) => $controller->getWalletData($r))
             );
         }
 
