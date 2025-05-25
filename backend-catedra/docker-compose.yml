@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  catedra-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "${APP_PORT}:8000"
+    depends_on:
+      - catedra-db
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - catedra-network
+
+  catedra-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${DB_LOCAL_PORT}:5432"
+    volumes:
+      - catedra-pgdata:/var/lib/postgresql/data
+      - ./.sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - catedra-network
+
+volumes:
+  catedra-pgdata:
+
+networks:
+  catedra-network:
+    driver: bridge
