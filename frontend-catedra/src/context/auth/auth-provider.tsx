@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { AuthContext, type AuthContextType } from "./auth-context";
-import { authApi } from "../../api/auth";
 import type { User } from "../../interfaces/user.interface";
+import { getProfile, loginAxios } from "../../api/auth";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -13,8 +13,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const checkAuth = async () => {
     try {
-      const userData = await authApi.me();
-      setUser(userData.user);
+      const userData = await getProfile();
+      setUser(userData.data);
     } catch {
       setUser(null);
     } finally {
@@ -22,14 +22,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const login = async (email: string, password: string): Promise<User> => {
-    const userData = await authApi.login(email, password);
+  const login = async (username: string, password: string): Promise<User> => {
+    const userData = await loginAxios({ username, password });
     localStorage.setItem("token-catedra", userData.token);
 
-    const userFromApi = await authApi.me();
-    setUser(userFromApi.user);
+    const userFromApi = await getProfile();
+    setUser(userFromApi.data);
 
-    return userFromApi.user;
+    return userFromApi.data;
   };
 
   const logout = async () => {

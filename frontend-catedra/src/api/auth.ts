@@ -1,18 +1,19 @@
 import axiosClient from "../lib/axios-client";
-import type { LoginResponse } from "../interfaces/auth.interface";
-import type { UserResponse } from "../interfaces/user.interface";
+import type {
+  LoginInput,
+  LoginResponse,
+  ProfileResponse,
+} from "../interfaces/auth.interface";
 
-export const authApi = {
-  me: async (): Promise<UserResponse> => {
-    const { data } = await axiosClient.get("/api/auth/profile");
-    return data;
-  },
+export const loginAxios = async (data: LoginInput): Promise<LoginResponse> => {
+  const response = await axiosClient.post<LoginResponse>(
+    "/api/auth/login",
+    data
+  );
+  return response.data;
+};
 
-  login: async (username: string, password: string): Promise<LoginResponse> => {
-    const { data } = await axiosClient.post("/api/auth/login", {
-      username,
-      password,
-    });
-    return data;
-  },
+export const getProfile = async (): Promise<ProfileResponse> => {
+  const response = await axiosClient.get<ProfileResponse>("/api/auth/profile");
+  return response.data;
 };
