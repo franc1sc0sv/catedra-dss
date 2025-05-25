@@ -29,6 +29,8 @@ use App\Services\AccountService;
 use App\Services\CardService;
 use App\Services\InsuranceService;
 use App\Services\LoanService;
+use App\Controllers\TransactionController;
+use App\Services\TransactionService;
 
 use function App\Middlewares\withParsedBody;
 
@@ -300,6 +302,33 @@ class Router
             return $this->jwtMiddleware->handle(
                 $request,
                 fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+            );
+        }
+
+        // Transaction routes
+        if ($path === '/api/transactions' && $method === 'POST') {
+            $controller = new TransactionController(new TransactionService($this->db->getConnection()));
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/transactions\/client\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
+            $controller = new TransactionController(new TransactionService($this->db->getConnection()));
+            $args = ['clientId' => $matches[1]];
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getByClient($r, $args))
+            );
+        }
+
+        if (preg_match('/^\/api\/transactions\/product\/([^\/]+)\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
+            $controller = new TransactionController(new TransactionService($this->db->getConnection()));
+            $args = ['referenceType' => $matches[1], 'referenceId' => $matches[2]];
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getByProduct($r, $args))
             );
         }
 
