@@ -43,7 +43,7 @@ class AuthController
 
             $result = $this->authService->getProfileByUserId($userId);
 
-            return new Response(200, ['Content-Type' => 'application/json'], json_encode(['success' => true, 'user' => $result]));
+            return new Response(200, ['Content-Type' => 'application/json'], json_encode(['success' => true, 'data' => $result]));
         } catch (\Throwable $e) {
             Logger::error("Error al obtener perfil por token: " . $e->getMessage());
             return new Response(500, ['Content-Type' => 'application/json'], json_encode(['error' => 'Error interno del servidor']));
