@@ -21,6 +21,14 @@ use App\Services\EmployeeService;
 use App\Services\DocumentService;
 use App\Services\ClientService;
 use App\Utils\Logger;
+use App\Controllers\AccountController;
+use App\Controllers\CardController;
+use App\Controllers\InsuranceController;
+use App\Controllers\LoanController;
+use App\Services\AccountService;
+use App\Services\CardService;
+use App\Services\InsuranceService;
+use App\Services\LoanService;
 
 use function App\Middlewares\withParsedBody;
 
@@ -38,7 +46,8 @@ class Router
         $pdo = $this->db->getConnection();
         $jwtSecret = $_ENV['JWT_SECRET'];
 
-        $this->jwtMiddleware = new JwtMiddleware(new AuthService($pdo, $jwtSecret));
+        $authService = new AuthService($pdo, $jwtSecret);
+        $this->jwtMiddleware = new JwtMiddleware($authService);
         $this->adminRoleMiddleware = new RoleMiddleware(['admin']);
         $this->employeeRoleMiddleware = new RoleMiddleware(['employee']);
         $this->adminEmployeeRoleMiddleware = new RoleMiddleware(['admin', 'employee']);
@@ -48,111 +57,253 @@ class Router
     {
         $path = $request->getUri()->getPath();
         $method = $request->getMethod();
-        $pdo = $this->db->getConnection();
-        $jwtSecret = $_ENV['JWT_SECRET'];
 
-        // Auth routes
+        // Rutas de autenticación
         if ($path === '/api/auth/login' && $method === 'POST') {
-            $authService = new AuthService($pdo, $jwtSecret);
-            $authController = new AuthController($authService);
-            return $authController->login($request);
+            $authService = new AuthService($this->db->getConnection(), $_ENV['JWT_SECRET']);
+            $controller = new AuthController($authService);
+            return $controller->login($request);
         }
 
         if ($path === '/api/auth/profile' && $method === 'GET') {
-            $authService = new AuthService($pdo, $jwtSecret);
-            $authController = new AuthController($authService);
-            return $this->jwtMiddleware->handle($request, fn($request) => $authController->getProfileByUserId($request));
+            $authService = new AuthService($this->db->getConnection(), $_ENV['JWT_SECRET']);
+            $controller = new AuthController($authService);
+            return $this->jwtMiddleware->handle($request, fn($req) => $controller->getProfileByUserId($req));
         }
 
-        // Admin routes
+        // Rutas de administrador
         if ($path === '/api/admin/dashboard' && $method === 'GET') {
-            $adminService = new AdminService($pdo);
-            $adminController = new AdminController($adminService);
+            $adminService = new AdminService($this->db->getConnection());
+            $controller = new AdminController($adminService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminRoleMiddleware->handle($request, fn($request) => $adminController->getDashboardSummary($request))
+                fn($req) => $this->adminRoleMiddleware->handle($req, fn($r) => $controller->getDashboardSummary($r))
             );
         }
 
-        // Employee routes
+        // Rutas de empleados
         if ($path === '/api/employees' && $method === 'POST') {
-            $employeeService = new EmployeeService($pdo);
-            $employeeController = new EmployeeController($employeeService);
+            $employeeService = new EmployeeService($this->db->getConnection());
+            $controller = new EmployeeController($employeeService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminRoleMiddleware->handle($request, fn($request) => $employeeController->create($request))
+                fn($req) => $this->adminRoleMiddleware->handle($req, fn($r) => $controller->create($r))
             );
         }
 
         if ($path === '/api/employees' && $method === 'GET') {
-            $employeeService = new EmployeeService($pdo);
-            $employeeController = new EmployeeController($employeeService);
+            $employeeService = new EmployeeService($this->db->getConnection());
+            $controller = new EmployeeController($employeeService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $employeeController->list($request))
+                fn($req) => $this->adminRoleMiddleware->handle($req, fn($r) => $controller->list($r))
             );
         }
 
         if (preg_match('/^\/api\/employees\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
-            $employeeService = new EmployeeService($pdo);
-            $employeeController = new EmployeeController($employeeService);
-            $request = $request->withAttribute('id', $matches[1]);
+            $employeeService = new EmployeeService($this->db->getConnection());
+            $controller = new EmployeeController($employeeService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $employeeController->getById($request))
+                fn($req) => $this->adminRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
             );
         }
 
         if (preg_match('/^\/api\/employees\/([^\/]+)\/toggle-status$/', $path, $matches) && $method === 'PUT') {
-            $employeeService = new EmployeeService($pdo);
-            $employeeController = new EmployeeController($employeeService);
-            $request = $request->withAttribute('userId', $matches[1]);
+            $employeeService = new EmployeeService($this->db->getConnection());
+            $controller = new EmployeeController($employeeService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminRoleMiddleware->handle($request, fn($request) => $employeeController->toggleStatus($request))
+                fn($req) => $this->adminRoleMiddleware->handle($req, fn($r) => $controller->toggleStatus($r))
             );
         }
 
-        // Client routes
+        // Rutas de clientes
         if ($path === '/api/clients' && $method === 'POST') {
-            $clientService = new ClientService($pdo);
-            $clientController = new ClientController($clientService);
+            $clientService = new ClientService($this->db->getConnection());
+            $controller = new ClientController($clientService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $clientController->create($request))
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
             );
         }
 
         if ($path === '/api/clients' && $method === 'GET') {
-            $clientService = new ClientService($pdo);
-            $clientController = new ClientController($clientService);
+            $clientService = new ClientService($this->db->getConnection());
+            $controller = new ClientController($clientService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $clientController->list($request))
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
             );
         }
 
         if (preg_match('/^\/api\/clients\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
-            $clientService = new ClientService($pdo);
-            $clientController = new ClientController($clientService);
-            $request = $request->withAttribute('id', $matches[1]);
+            $clientService = new ClientService($this->db->getConnection());
+            $controller = new ClientController($clientService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $clientController->getById($request))
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
             );
         }
 
         if (preg_match('/^\/api\/clients\/([^\/]+)\/toggle-status$/', $path, $matches) && $method === 'PUT') {
-            $clientService = new ClientService($pdo);
-            $clientController = new ClientController($clientService);
-            $request = $request->withAttribute('userId', $matches[1]);
+            $clientService = new ClientService($this->db->getConnection());
+            $controller = new ClientController($clientService);
             return $this->jwtMiddleware->handle(
                 $request,
-                fn($request) => $this->adminRoleMiddleware->handle($request, fn($request) => $clientController->toggleStatus($request))
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->toggleStatus($r))
             );
         }
 
-        // Default response for unrecognized routes
+        // Rutas de cuentas
+        if ($path === '/api/accounts' && $method === 'POST') {
+            $accountService = new AccountService($this->db->getConnection());
+            $controller = new AccountController($accountService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+            );
+        }
+
+        if ($path === '/api/accounts' && $method === 'GET') {
+            $accountService = new AccountService($this->db->getConnection());
+            $controller = new AccountController($accountService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/accounts\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
+            $accountService = new AccountService($this->db->getConnection());
+            $controller = new AccountController($accountService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/accounts\/([^\/]+)\/close$/', $path, $matches) && $method === 'PUT') {
+            $accountService = new AccountService($this->db->getConnection());
+            $controller = new AccountController($accountService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+            );
+        }
+
+        // Rutas de tarjetas
+        if ($path === '/api/cards' && $method === 'POST') {
+            $cardService = new CardService($this->db->getConnection());
+            $controller = new CardController($cardService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+            );
+        }
+
+        if ($path === '/api/cards' && $method === 'GET') {
+            $cardService = new CardService($this->db->getConnection());
+            $controller = new CardController($cardService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/cards\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
+            $cardService = new CardService($this->db->getConnection());
+            $controller = new CardController($cardService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/cards\/([^\/]+)\/close$/', $path, $matches) && $method === 'PUT') {
+            $cardService = new CardService($this->db->getConnection());
+            $controller = new CardController($cardService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+            );
+        }
+
+        // Rutas de préstamos
+        if ($path === '/api/loans' && $method === 'POST') {
+            $loanService = new LoanService($this->db->getConnection());
+            $controller = new LoanController($loanService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+            );
+        }
+
+        if ($path === '/api/loans' && $method === 'GET') {
+            $loanService = new LoanService($this->db->getConnection());
+            $controller = new LoanController($loanService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/loans\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
+            $loanService = new LoanService($this->db->getConnection());
+            $controller = new LoanController($loanService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/loans\/([^\/]+)\/close$/', $path, $matches) && $method === 'PUT') {
+            $loanService = new LoanService($this->db->getConnection());
+            $controller = new LoanController($loanService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+            );
+        }
+
+        // Rutas de seguros
+        if ($path === '/api/insurances' && $method === 'POST') {
+            $insuranceService = new InsuranceService($this->db->getConnection());
+            $controller = new InsuranceController($insuranceService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->create($r))
+            );
+        }
+
+        if ($path === '/api/insurances' && $method === 'GET') {
+            $insuranceService = new InsuranceService($this->db->getConnection());
+            $controller = new InsuranceController($insuranceService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->list($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/insurances\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
+            $insuranceService = new InsuranceService($this->db->getConnection());
+            $controller = new InsuranceController($insuranceService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->getById($r))
+            );
+        }
+
+        if (preg_match('/^\/api\/insurances\/([^\/]+)\/close$/', $path, $matches) && $method === 'PUT') {
+            $insuranceService = new InsuranceService($this->db->getConnection());
+            $controller = new InsuranceController($insuranceService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($req) => $this->adminEmployeeRoleMiddleware->handle($req, fn($r) => $controller->close($r))
+            );
+        }
+
+        // Ruta por defecto
         return new Response(404, ['Content-Type' => 'application/json'], json_encode([
             'error' => 'Ruta no encontrada'
         ]));

@@ -46,9 +46,29 @@ $http = new HttpServer(
         }
 
         // Procesar normalmente otras solicitudes
-        $response = Router::handle($request);
+        try {
+            $router = new Router();
+            $response = $router->handle($request);
 
-        return $response->withHeader('Access-Control-Allow-Origin', 'http://localhost:5173')
+            // Asegurar que sea una instancia válida de Response
+            if (!$response instanceof Response) {
+                $response = new Response(
+                    500,
+                    ['Content-Type' => 'text/plain'],
+                    'Internal Server Error: Invalid response from router.'
+                );
+            }
+        } catch (\Throwable $e) {
+            // Captura errores y genera una respuesta segura
+            $response = new Response(
+                500,
+                ['Content-Type' => 'application/json'],
+                json_encode(['error' => 'Server error', 'message' => $e->getMessage()])
+            );
+        }
+
+        return $response
+            ->withHeader('Access-Control-Allow-Origin', 'http://localhost:5173')
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
             ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
             ->withHeader('Access-Control-Allow-Credentials', 'true');
