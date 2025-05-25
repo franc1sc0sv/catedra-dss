@@ -35,14 +35,6 @@ class AuthController
         }
     }
 
-    public function logout(): Response
-    {
-        return new Response(200, [
-            'Set-Cookie' => 'token=; HttpOnly; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;',
-            'Content-Type' => 'application/json'
-        ], json_encode(['message' => 'Sesión cerrada']));
-    }
-
     public function getProfileByUserId(ServerRequestInterface $request): Response
     {
         try {

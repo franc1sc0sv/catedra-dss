@@ -12,113 +12,149 @@ use App\Controllers\DocumentController;
 use App\Controllers\EventController;
 use App\Controllers\AdminController;
 use App\Controllers\EmployeeController;
+use App\Controllers\ClientController;
 use App\Middlewares\JwtMiddleware;
 use App\Middlewares\RoleMiddleware;
 use App\Services\AuthService;
 use App\Services\AdminService;
 use App\Services\EmployeeService;
 use App\Services\DocumentService;
+use App\Services\ClientService;
 use App\Utils\Logger;
 
 use function App\Middlewares\withParsedBody;
 
 class Router
 {
-    public static function handle(ServerRequestInterface $request): Response
+    private JwtMiddleware $jwtMiddleware;
+    private RoleMiddleware $adminRoleMiddleware;
+    private RoleMiddleware $employeeRoleMiddleware;
+    private RoleMiddleware $adminEmployeeRoleMiddleware;
+    private DatabaseService $db;
+
+    public function __construct()
+    {
+        $this->db = new DatabaseService();
+        $pdo = $this->db->getConnection();
+        $jwtSecret = $_ENV['JWT_SECRET'];
+
+        $this->jwtMiddleware = new JwtMiddleware(new AuthService($pdo, $jwtSecret));
+        $this->adminRoleMiddleware = new RoleMiddleware(['admin']);
+        $this->employeeRoleMiddleware = new RoleMiddleware(['employee']);
+        $this->adminEmployeeRoleMiddleware = new RoleMiddleware(['admin', 'employee']);
+    }
+
+    public function handle(ServerRequestInterface $request): Response
     {
         $path = $request->getUri()->getPath();
         $method = $request->getMethod();
-
-        // DB
-        $db = new DatabaseService();
-        $pdo = $db->getConnection();
-
-        // JWT
+        $pdo = $this->db->getConnection();
         $jwtSecret = $_ENV['JWT_SECRET'];
 
-        // Services
-        $authService = new AuthService($pdo, $jwtSecret);
-        $adminService = new AdminService($pdo);
-        $employeeService = new EmployeeService($pdo);
+        // Auth routes
+        if ($path === '/api/auth/login' && $method === 'POST') {
+            $authService = new AuthService($pdo, $jwtSecret);
+            $authController = new AuthController($authService);
+            return $authController->login($request);
+        }
 
-        // Controllers
-        $authController = new AuthController($authService);
-        $eventController = new EventController();
-        $adminController = new AdminController($adminService);
-        $employeeController = new EmployeeController($employeeService);
+        if ($path === '/api/auth/profile' && $method === 'GET') {
+            $authService = new AuthService($pdo, $jwtSecret);
+            $authController = new AuthController($authService);
+            return $this->jwtMiddleware->handle($request, fn($request) => $authController->getProfileByUserId($request));
+        }
 
-        // Middlewares
-        $jwtMiddleware = new JwtMiddleware($authService);
-        $adminRoleMiddleware = new RoleMiddleware(['admin']);
-
-        return match (true) {
-            // Auth routes
-            $path === '/api/login' && $method === 'POST' => $authController->login($request),
-            $path === '/api/logout' && $method === 'POST' => $jwtMiddleware->handle($request, fn($req) => $authController->logout()),
-            $path === '/api/profile' && $method === 'GET' => $jwtMiddleware->handle($request, fn($req) => $authController->getProfileByUserId($req)),
-
-            // Admin routes
-            $path === '/api/admin/dashboard' && $method === 'GET' =>
-            $jwtMiddleware->handle(
+        // Admin routes
+        if ($path === '/api/admin/dashboard' && $method === 'GET') {
+            $adminService = new AdminService($pdo);
+            $adminController = new AdminController($adminService);
+            return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) =>
-                $adminRoleMiddleware->handle(
-                    $req,
-                    fn($r) =>
-                    $adminController->getDashboardSummary($r)
-                )
-            ),
+                fn($request) => $this->adminRoleMiddleware->handle($request, fn($request) => $adminController->getDashboardSummary($request))
+            );
+        }
 
-            $path === '/api/admin/employees' && $method === 'POST' =>
-            $jwtMiddleware->handle(
+        // Employee routes
+        if ($path === '/api/employees' && $method === 'POST') {
+            $employeeService = new EmployeeService($pdo);
+            $employeeController = new EmployeeController($employeeService);
+            return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) =>
-                $adminRoleMiddleware->handle(
-                    $req,
-                    fn($r) =>
-                    $employeeController->create($r)
-                )
-            ),
+                fn($request) => $this->adminRoleMiddleware->handle($request, fn($request) => $employeeController->create($request))
+            );
+        }
 
-            $path === '/api/admin/employees' && $method === 'GET' =>
-            $jwtMiddleware->handle(
+        if ($path === '/api/employees' && $method === 'GET') {
+            $employeeService = new EmployeeService($pdo);
+            $employeeController = new EmployeeController($employeeService);
+            return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) =>
-                $adminRoleMiddleware->handle(
-                    $req,
-                    fn($r) =>
-                    $employeeController->list($r)
-                )
-            ),
+                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $employeeController->list($request))
+            );
+        }
 
-            $path === '/api/admin/employees/{id}' && $method === 'GET' =>
-            $jwtMiddleware->handle(
+        if (preg_match('/^\/api\/employees\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
+            $employeeService = new EmployeeService($pdo);
+            $employeeController = new EmployeeController($employeeService);
+            $request = $request->withAttribute('id', $matches[1]);
+            return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) =>
-                $adminRoleMiddleware->handle(
-                    $req,
-                    fn($r) =>
-                    $employeeController->getById($r)
-                )
-            ),
+                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $employeeController->getById($request))
+            );
+        }
 
-            $path === '/api/admin/employees/{userId}/toggle-status' && $method === 'PUT' =>
-            $jwtMiddleware->handle(
+        if (preg_match('/^\/api\/employees\/([^\/]+)\/toggle-status$/', $path, $matches) && $method === 'PUT') {
+            $employeeService = new EmployeeService($pdo);
+            $employeeController = new EmployeeController($employeeService);
+            $request = $request->withAttribute('userId', $matches[1]);
+            return $this->jwtMiddleware->handle(
                 $request,
-                fn($req) =>
-                $adminRoleMiddleware->handle(
-                    $req,
-                    fn($r) =>
-                    $employeeController->toggleStatus($r)
-                )
-            ),
+                fn($request) => $this->adminRoleMiddleware->handle($request, fn($request) => $employeeController->toggleStatus($request))
+            );
+        }
 
+        // Client routes
+        if ($path === '/api/clients' && $method === 'POST') {
+            $clientService = new ClientService($pdo);
+            $clientController = new ClientController($clientService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $clientController->create($request))
+            );
+        }
 
-            default => new Response(
-                404,
-                ['Content-Type' => 'text/plain'],
-                "404 - Ruta no encontrada"
-            ),
-        };
+        if ($path === '/api/clients' && $method === 'GET') {
+            $clientService = new ClientService($pdo);
+            $clientController = new ClientController($clientService);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $clientController->list($request))
+            );
+        }
+
+        if (preg_match('/^\/api\/clients\/([^\/]+)$/', $path, $matches) && $method === 'GET') {
+            $clientService = new ClientService($pdo);
+            $clientController = new ClientController($clientService);
+            $request = $request->withAttribute('id', $matches[1]);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($request) => $this->adminEmployeeRoleMiddleware->handle($request, fn($request) => $clientController->getById($request))
+            );
+        }
+
+        if (preg_match('/^\/api\/clients\/([^\/]+)\/toggle-status$/', $path, $matches) && $method === 'PUT') {
+            $clientService = new ClientService($pdo);
+            $clientController = new ClientController($clientService);
+            $request = $request->withAttribute('userId', $matches[1]);
+            return $this->jwtMiddleware->handle(
+                $request,
+                fn($request) => $this->adminRoleMiddleware->handle($request, fn($request) => $clientController->toggleStatus($request))
+            );
+        }
+
+        // Default response for unrecognized routes
+        return new Response(404, ['Content-Type' => 'application/json'], json_encode([
+            'error' => 'Ruta no encontrada'
+        ]));
     }
 }
