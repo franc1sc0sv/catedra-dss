@@ -6,7 +6,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use React\Http\Message\Response;
 
 class RoleMiddleware
-{
+{   //config dependency injection 
     public function __construct(private array $allowedRoles) {}
 
     public function handle(ServerRequestInterface $request, callable $next): Response

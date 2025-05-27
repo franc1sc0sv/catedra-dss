@@ -11,6 +11,7 @@ use React\Http\Message\Response;
 
 class JwtMiddleware
 {
+    //dependencia de servicio 
     public function __construct(private AuthService $authService) {}
 
     public function handle(ServerRequestInterface $request, callable $next): Response
