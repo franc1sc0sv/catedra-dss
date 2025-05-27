@@ -11,7 +11,7 @@ import { DashboardEmployeeProducts } from "../pages/employee/dashboard-employee-
 import { DashboardEmployeeTransactions } from "../pages/employee/dashboard-employee-transactions";
 import { UserRole } from "../enums/user-role.enum";
 import { DashboardCashierTransactions } from "../pages/cashier/dasboard-cashier-transactions";
-import { DashboardClientWallet } from "../pages/client/dasboard-client-wallet";
+import { DashboardClientWallet } from "../pages/client/dashboard-client-wallet";
 
 export const router = createBrowserRouter([
   {
