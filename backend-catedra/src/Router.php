@@ -61,6 +61,14 @@ class Router
         $path = $request->getUri()->getPath();
         $method = $request->getMethod();
 
+        // Test route
+        if ($path === '/api/test' && $method === 'GET') {
+            return new Response(200, ['Content-Type' => 'application/json'], json_encode(['message' => 'API is working']));
+        }
+
+
+        
+
         // Rutas de autenticación
         if ($path === '/api/auth/login' && $method === 'POST') {
             $authService = new AuthService($this->db->getConnection(), $_ENV['JWT_SECRET']);
