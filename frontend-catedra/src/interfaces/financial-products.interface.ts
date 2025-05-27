@@ -1,5 +1,6 @@
+import type { ProductStatus } from "../enums/product-status.enum";
+
 // Common types
-export type ProductStatus = "active" | "closed";
 export type CardNetwork = "Visa" | "MasterCard";
 export type CardCategory =
   | "Classic"
