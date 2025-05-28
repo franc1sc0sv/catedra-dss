@@ -159,6 +159,7 @@ class Router
 
         if (preg_match('/^\/api\/clients\/([^\/]+)\/toggle-status$/', $path, $matches) && $method === 'PUT') {
             $clientService = new ClientService($this->db->getConnection());
+            $request = $request->withAttribute('userId', $matches[1]);
             $controller = new ClientController($clientService);
             return $this->jwtMiddleware->handle(
                 $request,

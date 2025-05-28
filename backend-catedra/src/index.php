@@ -78,4 +78,4 @@ $http = new HttpServer(
 $socket = new SocketServer("0.0.0.0:8000", [], $loop);
 $http->listen($socket);
 
-echo 'Listening on ' . str_replace('tcp:', 'http:', $socket->getAddress()) . PHP_EOL;
+echo 'Listening on DEMO ' . str_replace('tcp:', 'http:', $socket->getAddress()) . PHP_EOL;

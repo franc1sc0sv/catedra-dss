@@ -54,6 +54,7 @@ class ClientController
     {
         try {
             $userId = $request->getAttribute('userId');
+            var_dump($userId);
             $result = $this->clientService->toggleStatus($userId);
 
             return new Response(200, ['Content-Type' => 'application/json'], json_encode([

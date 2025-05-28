@@ -36,5 +36,7 @@ export const toggleClientStatus = async (
   const response = await axiosClient.put<ToggleClientStatusResponse>(
     `/api/clients/${id}/toggle-status`
   );
+
+  console.log("Toggle client status response:",id);
   return response.data;
 };
