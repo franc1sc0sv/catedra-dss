@@ -1,5 +1,4 @@
-
-import { Bar } from 'react-chartjs-2';
+import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -8,7 +7,9 @@ import {
   Title,
   Tooltip,
   Legend,
-} from 'chart.js';
+} from "chart.js";
+import { useEffect } from "react";
+import { getDashboardSummary } from "../../api/admin";
 
 // Registrar los componentes necesarios de Chart.js
 ChartJS.register(
@@ -23,7 +24,9 @@ ChartJS.register(
 // --- Componente de Tarjeta de Información ---
 export const Adminmoduledashboard = ({ title = "nose", value = "0" }) => {
   return (
-    <div className="flex items-center bg-white rounded-lg shadow-md p-6 flex-1 min-w-[200px] border-l-4 border-blue-500"> {/* Añadido un borde azul para el detalle visual */}
+    <div className="flex items-center bg-white rounded-lg shadow-md p-6 flex-1 min-w-[200px] border-l-4 border-blue-500">
+      {" "}
+      {/* Añadido un borde azul para el detalle visual */}
       <div className="flex-grow">
         <p className="text-gray-500 text-sm font-medium">{title}</p>
         <p className="text-2xl font-semibold text-gray-900">{value}</p>
@@ -34,23 +37,23 @@ export const Adminmoduledashboard = ({ title = "nose", value = "0" }) => {
 
 // --- Datos del Gráfico de Barras ---
 const productsChartData = {
-  labels: ['Cuentas', 'Tarjetas', 'Préstamos', 'Seguros'],
+  labels: ["Cuentas", "Tarjetas", "Préstamos", "Seguros"],
   datasets: [
     {
-      label: 'Cantidad',
+      label: "Cantidad",
       data: [350, 480, 250, 180], // Datos de ejemplo para las alturas de las barras
       backgroundColor: [
-        '#4299E1', // Un azul estándar
-        '#3182CE', // Un azul ligeramente más oscuro
-        '#63B3ED', // Un azul más claro
-        '#90CDF4', // Otro azul suave
+        "#4299E1", // Un azul estándar
+        "#3182CE", // Un azul ligeramente más oscuro
+        "#63B3ED", // Un azul más claro
+        "#90CDF4", // Otro azul suave
       ],
       borderRadius: 4, // Bordes redondeados para las barras
     },
   ],
 };
 
-const productsChartOptions= { 
+const productsChartOptions = {
   responsive: true,
   maintainAspectRatio: false, // Permite que el gráfico no mantenga su relación de aspecto original
   plugins: {
@@ -72,9 +75,9 @@ const productsChartOptions= {
       ticks: {
         font: {
           size: 12,
-          weight: 'bold', // Explicitly type as 'bold'
+          weight: "bold", // Explicitly type as 'bold'
         },
-        color: '#4A5568', // Color del texto de las etiquetas del eje X
+        color: "#4A5568", // Color del texto de las etiquetas del eje X
       },
     },
     y: {
@@ -89,21 +92,48 @@ const productsChartOptions= {
   },
 };
 
-
 // --- Datos de Transacciones Recientes ---
 const recentTransactions = [
-  { referencia: 'TRX-001', cliente: 'Juan Pérez', monto: 500.00, fecha: '20/03/2025' },
-  { referencia: 'TRX-002', cliente: 'María López', monto: -120.00, fecha: '20/03/2025' },
-  { referencia: 'TRX-003', cliente: 'Carlos Ruiz', monto: 1200.00, fecha: '19/03/2025' },
-  { referencia: 'TRX-004', cliente: 'Ana Martínez', monto: -350.00, fecha: '19/03/2025' },
+  {
+    referencia: "TRX-001",
+    cliente: "Juan Pérez",
+    monto: 500.0,
+    fecha: "20/03/2025",
+  },
+  {
+    referencia: "TRX-002",
+    cliente: "María López",
+    monto: -120.0,
+    fecha: "20/03/2025",
+  },
+  {
+    referencia: "TRX-003",
+    cliente: "Carlos Ruiz",
+    monto: 1200.0,
+    fecha: "19/03/2025",
+  },
+  {
+    referencia: "TRX-004",
+    cliente: "Ana Martínez",
+    monto: -350.0,
+    fecha: "19/03/2025",
+  },
 ];
 
 // --- Componente Principal del Dashboard ---
 export const Dashboard = () => {
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await getDashboardSummary();
+      console.log(response);
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white p-6">
       {/* Encabezado del Dashboard */}
-      
 
       {/* Tarjetas de Información */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -116,30 +146,50 @@ export const Dashboard = () => {
       {/* Sección de Gráficos y Tablas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Productos por Tipo - Gráfico de Barras */}
-        <div className="bg-white rounded-lg shadow-md p-6 h-[400px]"> {/* Altura fija para el contenedor del gráfico */}
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Productos por Tipo</h2>
-          <div className="h-[calc(100%-40px)]"> {/* Asegura que el gráfico tome el espacio restante */}
+        <div className="bg-white rounded-lg shadow-md p-6 h-[400px]">
+          {" "}
+          {/* Altura fija para el contenedor del gráfico */}
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            Productos por Tipo
+          </h2>
+          <div className="h-[calc(100%-40px)]">
+            {" "}
+            {/* Asegura que el gráfico tome el espacio restante */}
             <Bar data={productsChartData} options={productsChartOptions} />
           </div>
         </div>
 
         {/* Transacciones Recientes - Tabla */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Transacciones Recientes</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            Transacciones Recientes
+          </h2>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-white">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Referencia
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Cliente
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Monto
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Fecha
                   </th>
                 </tr>
@@ -154,8 +204,15 @@ export const Dashboard = () => {
                       {transaction.cliente}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
-                      <span className={transaction.monto >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        {transaction.monto >= 0 ? '+' : ''}${transaction.monto.toFixed(2)}
+                      <span
+                        className={
+                          transaction.monto >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }
+                      >
+                        {transaction.monto >= 0 ? "+" : ""}$
+                        {transaction.monto.toFixed(2)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
