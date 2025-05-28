@@ -230,15 +230,23 @@ class ClientService
     public function toggleStatus(string $userId): bool
     {
         try {
+            $userData = $this->getById($userId);
+            if (!$userData) {
+                throw new \RuntimeException("Usuario no encontrado");
+            }
+
+            // Primero actualizamos el estado
             $stmt = $this->pdo->prepare(
                 "UPDATE users 
                 SET is_active = NOT is_active,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND role = 'client' 
-                RETURNING is_active"
+                WHERE id = ? AND role = 'client'
+                RETURNING is_active;"
             );
-            $stmt->execute([$userId]);
-            return (bool) $stmt->fetchColumn();
+            $stmt->execute([$userData['user_id']]);
+
+            $newStatus = $stmt->fetchColumn();
+            return (bool) $newStatus;
         } catch (\Throwable $e) {
             Logger::error("Error toggling client status: " . $e->getMessage());
             throw new \RuntimeException("Error toggling client status");

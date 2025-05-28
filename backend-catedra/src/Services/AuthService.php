@@ -26,6 +26,10 @@ class AuthService
                 return ['error' => 'Usuario o contraseña son incorrectos.'];
             }
 
+            if (!$user['is_active']) {
+                return ['error' => 'Usuario inactivo.'];
+            }
+
             $payload = [
                 'id' => $user['id'],
                 'username' => $user['username'],
