@@ -29,7 +29,7 @@ class CardService
 
         // Validar limit_amount
         try {
-            v::numeric()->positive()->between(0, 999999.99)->assert($data['limit_amount']);
+            v::number()->positive()->between(0, 999999.99)->assert($data['limit_amount']);
         } catch (ValidationException $e) {
             return 'El límite debe ser un número positivo entre 0 y 999999.99';
         }
@@ -50,14 +50,14 @@ class CardService
 
         // Validar interest_rate
         try {
-            v::numeric()->positive()->between(0, 100)->assert($data['interest_rate']);
+            v::number()->positive()->between(0, 100)->assert($data['interest_rate']);
         } catch (ValidationException $e) {
             return 'La tasa de interés debe ser un número positivo entre 0 y 100';
         }
 
         // Validar membership_fee
         try {
-            v::numeric()->positive()->between(0, 9999.99)->assert($data['membership_fee']);
+            v::number()->positive()->between(0, 9999.99)->assert($data['membership_fee']);
         } catch (ValidationException $e) {
             return 'La cuota de membresía debe ser un número positivo entre 0 y 9999.99';
         }
@@ -93,14 +93,15 @@ class CardService
             // Crear la tarjeta
             $stmt = $this->pdo->prepare(
                 "INSERT INTO cards (
-                    client_id, card_number, limit_amount, network,
+                    client_id, card_number, issue_date, limit_amount, network,
                     category, interest_rate, membership_fee, card_status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
                 RETURNING id"
             );
             $stmt->execute([
                 $data['client_id'],
                 $data['card_number'],
+                $data['issue_date'],
                 $data['limit_amount'],
                 $data['network'],
                 $data['category'],

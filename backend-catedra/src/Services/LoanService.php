@@ -15,11 +15,11 @@ class LoanService
             return 'El ID del cliente es requerido';
         }
 
-        if (empty($data['loan_number'])) {
+        if (empty($data['reference_number'])) {
             return 'El número de préstamo es requerido';
         }
 
-        if (!isset($data['amount']) || $data['amount'] <= 0) {
+        if (!isset($data['loan_amount']) || $data['loan_amount'] <= 0) {
             return 'El monto del préstamo debe ser mayor a 0';
         }
 
@@ -31,13 +31,11 @@ class LoanService
             return 'La tasa de interés debe ser mayor o igual a 0';
         }
 
-        if (empty($data['payment_frequency'])) {
-            return 'La frecuencia de pago es requerida';
-        }
-
-        if (!isset($data['term_months']) || $data['term_months'] <= 0) {
+        if (!isset($data['payment_terms']) || $data['payment_terms'] <= 0) {
             return 'El plazo en meses debe ser mayor a 0';
         }
+
+        // Puedes agregar validaciones para los otros campos si lo deseas
 
         return null;
     }
@@ -58,37 +56,47 @@ class LoanService
             }
 
             // Verificar si el número de préstamo ya existe
-            $stmt = $this->pdo->prepare('SELECT id FROM loans WHERE loan_number = ?');
-            $stmt->execute([$data['loan_number']]);
+            $stmt = $this->pdo->prepare('SELECT id FROM loans WHERE reference_number = ?');
+            $stmt->execute([$data['reference_number']]);
             if ($stmt->fetch()) {
                 throw new \RuntimeException('El número de préstamo ya existe');
             }
 
             $this->pdo->beginTransaction();
 
+            // Insertar el préstamo
             $stmt = $this->pdo->prepare('
                 INSERT INTO loans (
-                    client_id, loan_number, amount, category, interest_rate,
-                    payment_frequency, term_months, status, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    client_id, reference_number, issue_date, loan_amount, payment_terms, monthly_payment, due_date, interest_rate, insurance_fee, beneficiaries, category, loan_status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ');
-
             $stmt->execute([
                 $data['client_id'],
-                $data['loan_number'],
-                $data['amount'],
-                $data['category'],
+                $data['reference_number'],
+                $data['issue_date'],
+                $data['loan_amount'],
+                $data['payment_terms'],
+                $data['monthly_payment'],
+                $data['due_date'],
                 $data['interest_rate'],
-                $data['payment_frequency'],
-                $data['term_months'],
-                'active'
+                $data['insurance_fee'],
+                $data['beneficiaries'],
+                $data['category'],
+                $data['loan_status'] ?? 'active'
             ]);
 
-            $loanId = $this->pdo->lastInsertId();
+            // Recuperar el préstamo recién insertado usando reference_number
+            $stmt = $this->pdo->prepare('SELECT * FROM loans WHERE reference_number = ?');
+            $stmt->execute([$data['reference_number']]);
+            $loan = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$loan) {
+                throw new \RuntimeException('No se pudo recuperar el préstamo insertado');
+            }
 
             $this->pdo->commit();
 
-            return $this->getById($loanId);
+            return $loan;
         } catch (\Throwable $e) {
             $this->pdo->rollBack();
             Logger::error("Error creating loan: " . $e->getMessage());

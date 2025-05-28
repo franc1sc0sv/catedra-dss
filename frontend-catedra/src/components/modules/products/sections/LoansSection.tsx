@@ -7,9 +7,10 @@ import { LoanCategory } from "../../../../enums/loan-category.enum";
 import { ProductStatus } from "../../../../enums/product-status.enum";
 import { createLoan, getLoans } from "../../../../api/financial-products";
 
-const DEFAULT_FORM_DATA = {
+const DEFAULT_FORM_DATA: Omit<Loan, "id" | "created_at"> = {
   client_id: "",
   reference_number: "",
+  issue_date: "",
   loan_amount: 0,
   payment_terms: 0,
   monthly_payment: 0,
@@ -19,39 +20,28 @@ const DEFAULT_FORM_DATA = {
   beneficiaries: "",
   category: LoanCategory.PERSONAL,
   loan_status: ProductStatus.ACTIVE,
-  issue_date: "",
 };
 
 export function LoansSection() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-
-  const [form, setForm] =
-    useState<Omit<Loan, "id" | "client_name" | "status" | "created_at">>(
-      DEFAULT_FORM_DATA
-    );
+  const [form, setForm] = useState(DEFAULT_FORM_DATA);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const token = localStorage.getItem("token");
-
   // Cargar clientes
   useEffect(() => {
-    const fetcher = async () => {
-      const clients = await getClients();
-      setClients(clients.data || []);
-    };
-    fetcher();
-  }, [token]);
+    getClients()
+      .then((clients) => setClients(clients.data || []))
+      .catch(() => setClients([]));
+  }, []);
 
   // Cargar préstamos al montar
   useEffect(() => {
-    const fetcher = async () => {
-      const loans = await getLoans();
-      setLoans(loans.data || []);
-    };
-    fetcher();
-  }, [token]);
+    getLoans()
+      .then((loans) => setLoans(loans.data || []))
+      .catch(() => setLoans([]));
+  }, []);
 
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -59,8 +49,14 @@ export function LoansSection() {
     const { name, value } = e.target;
     setForm((prevForm) => ({
       ...prevForm,
-      [name]: ["amount", "interest_rate", "term_months"].includes(name)
-        ? Number(value)
+      [name]: [
+        "loan_amount",
+        "interest_rate",
+        "insurance_fee",
+        "payment_terms",
+        "monthly_payment",
+      ].includes(name)
+        ? value === "" ? "" : Number(value)
         : value,
     }));
   };
@@ -70,16 +66,15 @@ export function LoansSection() {
     setLoading(true);
     setError(null);
     try {
-      await createLoan(form);
+      await createLoan(form); // Ya no necesitas adaptar los nombres
       // Recargar lista
       const loans = await getLoans();
       setLoans(loans.data || []);
       setForm(DEFAULT_FORM_DATA);
-    } catch (err: unknown) {
+    } catch (err: any) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "No se pudo guardar el préstamo. Verifica los campos."
+        err?.response?.data?.error ||
+          "No se pudo guardar el préstamo. Verifica los campos."
       );
     }
     setLoading(false);
@@ -130,13 +125,26 @@ export function LoansSection() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha de Emisión
+            </label>
+            <input
+              type="date"
+              name="issue_date"
+              value={form.issue_date}
+              onChange={handleFormChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Monto
             </label>
             <input
               type="number"
               name="loan_amount"
               placeholder="Monto"
-              value={form.loan_amount}
+              value={form.loan_amount === 0 ? "" : form.loan_amount}
               onChange={handleFormChange}
               required
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
@@ -146,15 +154,19 @@ export function LoansSection() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Categoría
             </label>
-            <input
-              type="text"
+            <select
               name="category"
-              placeholder="Personal, Auto, etc."
               value={form.category}
               onChange={handleFormChange}
               required
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-            />
+            >
+              {Object.values(LoanCategory).map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -172,23 +184,6 @@ export function LoansSection() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Frecuencia de Pago
-            </label>
-            <select
-              name="monthly_payment"
-              value={form.monthly_payment}
-              onChange={handleFormChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-            >
-              <option value="">Seleccione</option>
-              <option value="Mensual">Mensual</option>
-              <option value="Quincenal">Quincenal</option>
-              <option value="Semanal">Semanal</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
               Plazo (meses)
             </label>
             <input
@@ -201,28 +196,94 @@ export function LoansSection() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mensualidad
+            </label>
+            <input
+              type="number"
+              name="monthly_payment"
+              placeholder="0"
+              value={form.monthly_payment}
+              onChange={handleFormChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha de Vencimiento
+            </label>
+            <input
+              type="date"
+              name="due_date"
+              value={form.due_date}
+              onChange={handleFormChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Seguro
+            </label>
+            <input
+              type="number"
+              name="insurance_fee"
+              placeholder="0"
+              value={form.insurance_fee}
+              onChange={handleFormChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Beneficiarios
+            </label>
+            <input
+              type="text"
+              name="beneficiaries"
+              placeholder="Beneficiarios"
+              value={form.beneficiaries}
+              onChange={handleFormChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Estado
+            </label>
+            <select
+              name="loan_status"
+              value={form.loan_status}
+              onChange={handleFormChange}
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+            >
+              {Object.values(ProductStatus).map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2 flex justify-end space-x-3 mt-6">
+            <button
+              type="button"
+              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 text-sm font-medium bg-white hover:bg-gray-50"
+              onClick={() => setForm(DEFAULT_FORM_DATA)}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              disabled={loading}
+            >
+              Guardar
+            </button>
+          </div>
         </form>
-        <div className="flex justify-end space-x-3 mt-6">
-          <button
-            type="button"
-            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 text-sm font-medium bg-white hover:bg-gray-50"
-            onClick={() =>
-              setForm({
-                ...DEFAULT_FORM_DATA,
-              })
-            }
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-            disabled={loading}
-            formNoValidate={false}
-          >
-            Guardar
-          </button>
-        </div>
         {error && <div className="text-red-500 mt-2">{error}</div>}
       </div>
 
@@ -244,6 +305,9 @@ export function LoansSection() {
                     Cliente
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fecha Emisión
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Monto
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -253,10 +317,19 @@ export function LoansSection() {
                     Interés
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Frecuencia
+                    Plazo
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Plazo
+                    Mensualidad
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Vence
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Seguro
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Beneficiarios
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
@@ -270,10 +343,13 @@ export function LoansSection() {
                       {loan.reference_number}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {loan.client_id}
+                      {clients.find((c) => c.id === loan.client_id)?.full_name || loan.client_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${loan.loan_amount?.toFixed(2)}
+                      {loan.issue_date}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${Number(loan.loan_amount).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {loan.category}
@@ -282,10 +358,19 @@ export function LoansSection() {
                       {loan.interest_rate}%
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {loan.monthly_payment}
+                      {loan.payment_terms}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {loan.payment_terms}
+                      ${Number(loan.monthly_payment).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {loan.due_date}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${Number(loan.insurance_fee).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {loan.beneficiaries}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {loan.loan_status}

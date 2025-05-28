@@ -29,7 +29,7 @@ class AccountService
 
         // Validar amount
         try {
-            v::numeric()->positive()->between(0, 999999999.99)->assert($data['amount']);
+            v::number()->positive()->between(0, 999999999.99)->assert($data['amount']);
         } catch (ValidationException $e) {
             return 'El monto debe ser un número positivo entre 0 y 999999999.99';
         }
@@ -56,7 +56,7 @@ class AccountService
 
             // Validar percentage
             try {
-                v::numeric()->between(0, 100)->assert($beneficiary['percentage']);
+                v::number()->between(0, 100)->assert($beneficiary['percentage']);
             } catch (ValidationException $e) {
                 return 'El porcentaje debe estar entre 0 y 100';
             }
